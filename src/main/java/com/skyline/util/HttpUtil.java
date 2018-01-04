@@ -20,6 +20,7 @@ import javax.servlet.http.HttpServletResponse;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.http.HttpEntity;
 import org.apache.http.client.ClientProtocolException;
+import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpPost;
@@ -44,11 +45,14 @@ public class HttpUtil
 		UrlEncodedFormEntity uefEntity = new UrlEncodedFormEntity(formparams, "UTF-8");  
 		
 		HttpPost httppost = new HttpPost(url);
+		RequestConfig requestConfig = RequestConfig.custom()
+                .setConnectTimeout(50000).setConnectionRequestTimeout(10000)
+                .setSocketTimeout(50000).build();
+		httppost.setConfig(requestConfig);
 		httppost.setEntity(uefEntity);
 		
 		CloseableHttpClient httpClient = HttpClients.createDefault();
 		CloseableHttpResponse response = httpClient.execute(httppost); 
-		
 		
         HttpEntity entity = response.getEntity();
         if (entity != null) {  
