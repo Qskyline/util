@@ -238,7 +238,9 @@ public class NetworkUtil
 				BufferedOutputStream bos = null;
 				BufferedOutputStream f_bos = null;
 				byte[] _buffer = new byte[buffer];			
-				int len = 0;
+				int len = 0;				
+				File file = null;
+				int exeption_help = 0; 
 				
 				try {
 					do {
@@ -270,13 +272,14 @@ public class NetworkUtil
 						}
 
 						String fullPath = path + "/" + fileName;
-						File file = new File(fullPath);
+						file = new File(fullPath);
 						if (file.exists()) {
 							communicateHelp("The file is already exist.", -4, bos);
 							break;
 						}
 						
 						communicateHelp("PreCheck Success.", 0, bos);
+						exeption_help = 1;
 
 						f_bos = new BufferedOutputStream(new FileOutputStream(file));
 						while ((len = bis.read(_buffer)) != -1) {
@@ -286,6 +289,14 @@ public class NetworkUtil
 						communicateHelp("FileSave Success.", 1, bos);
 					} while (false);
 				} catch (Exception e) {
+					if(exeption_help == 1) {
+						if(f_bos != null) {
+							try {f_bos.close();} catch (IOException e1) {e1.printStackTrace();}
+						}
+						if(file != null && file.exists()) {
+							file.delete();
+						}
+					}
 					e.printStackTrace();
 					communicateHelp("Socket Exception.", -5, bos);
 				} finally {
