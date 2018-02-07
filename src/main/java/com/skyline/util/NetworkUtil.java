@@ -421,11 +421,31 @@ public class NetworkUtil
 	public static int TcpFileServerListen(int port, String path, CallBack callback) {
 		return TcpFileOperation.getInstance().TcpFileServerListen(port, path, callback);
 	}
+	
+	/**
+	 * 
+	 * @param url
+	 * @param desPort
+	 * @param sourcePort
+	 * @param filePath
+	 * @return 
+	 * -11: File is not exist.
+	 * -12: The path is not file.
+	 * -13: Client can not fetch errorMsg.
+	 * -14: Client can not fetch errorCode.
+	 * -15: Client Socket Error, 
+	 * -1: Server can not fetch the file name.
+	 * -2: Server can not fetch the file size.
+	 * -3: Server has no more free disk space.
+	 * -4: The file has been exist on the server.
+	 * -5: Server Socket Error.
+	 * 0: preCheck success.
+	 * 1: fileSave success.
+	 */
 	public static int TcpFileClientSend(String url, int desPort, int sourcePort, String filePath) {
 		return TcpFileOperation.getInstance().TcpFileClientSend(url, desPort, sourcePort, filePath);
 	}
-	
-	
+		
     public static void main( String[] args )
     {
         TcpFileServerListen(11039, "D:/kingdeecloudbackup");
