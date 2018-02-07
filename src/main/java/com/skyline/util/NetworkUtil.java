@@ -173,11 +173,8 @@ public class NetworkUtil
 			return tcpFileOperation;
 		}
 		
-		public int TcpFileServerListen(int port, String path) {
-			return tcpFileServer.listen(port, path);
-		}
-		public int TcpFileServerListen(int port, String path, CallBack callback) {
-			return tcpFileServer.listen(port, path, callback);
+		public int TcpFileServerListen(int port, String path, boolean isKeep, CallBack callback) {
+			return tcpFileServer.listen(port, path, isKeep, callback);
 		}
 		public int TcpFileClientSend(String url, int desPort, int sourcePort, String filePath) {
 			return tcpFileClient.sendFile(url, desPort, sourcePort, filePath);
@@ -199,12 +196,8 @@ public class NetworkUtil
 			public TcpFileServer() {
 				this(null, null, new DoNothingCallBack());
 			}
-			
-			public int listen(int port, String path) {
-				return listen(port, path, null);
-			}
 
-			public int listen(int port, String path, CallBack callback) {
+			public int listen(int port, String path, boolean isKeep, CallBack callback) {
 				try {
 					Socket socket = new Socket("127.0.0.1", port);
 					socket.close();
@@ -224,6 +217,10 @@ public class NetworkUtil
 						Socket s = ss.accept();
 						if(callback == null) new TcpFileServer(s, path).run();
 						else new TcpFileServer(s, path, callback).run();
+						if(!isKeep) {
+							ss.close();
+							break;
+						}
 					}
 				} catch (Exception e) {
 					try {
@@ -233,6 +230,7 @@ public class NetworkUtil
 					}
 					return -2;
 				}
+				return 0;
 			}
 			
 			public void run() {
@@ -415,11 +413,14 @@ public class NetworkUtil
 		public void faied(int errorCode);
 	}
 	
-	public static int TcpFileServerListen(int port, String path) {
-		return TcpFileOperation.getInstance().TcpFileServerListen(port, path);
+	public static int tcpFileServerListen(int port, String path) {
+		return tcpFileServerListen(port, path, false);
 	}
-	public static int TcpFileServerListen(int port, String path, CallBack callback) {
-		return TcpFileOperation.getInstance().TcpFileServerListen(port, path, callback);
+	public static int tcpFileServerListen(int port, String path, boolean isKeep) {
+		return tcpFileServerListen(port, path, isKeep, null);
+	}
+	public static int tcpFileServerListen(int port, String path, boolean isKeep, CallBack callback) {
+		return TcpFileOperation.getInstance().TcpFileServerListen(port, path, isKeep, callback);
 	}
 	
 	/**
@@ -442,12 +443,12 @@ public class NetworkUtil
 	 * 0: preCheck success.
 	 * 1: fileSave success.
 	 */
-	public static int TcpFileClientSend(String url, int desPort, int sourcePort, String filePath) {
+	public static int tcpFileClientSend(String url, int desPort, int sourcePort, String filePath) {
 		return TcpFileOperation.getInstance().TcpFileClientSend(url, desPort, sourcePort, filePath);
 	}
 		
     public static void main( String[] args )
     {
-        TcpFileServerListen(11039, "D:/kingdeecloudbackup");
+        tcpFileServerListen(11039, "D:/kingdeecloudbackup");
     }
 }
