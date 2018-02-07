@@ -6,6 +6,8 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.util.ArrayList;
+import java.util.Hashtable;
 
 public class SerializeUtil {
 	public static boolean serializeObject(String path, Object o) throws IOException {
@@ -40,6 +42,24 @@ public class SerializeUtil {
 	}
 	
 	public static void main(String[] args) {
-		System.out.println("Hello World!");
+		
+		Hashtable<String, ArrayList<String>> sdf = new Hashtable<>();
+		ArrayList<String> tt = new ArrayList<>();
+		tt.add("asdadsadas");
+		tt.add("asdadsad000");
+		sdf.put("qqq", tt);
+		Object obj = null;
+		try {
+			serializeObject("C:/Users/skyline/Desktop/temp/qwe.qwe", sdf);
+			obj = deserializeObject("C:/Users/skyline/Desktop/temp/qwe.qwe");
+		} catch (IOException | ClassNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		Hashtable<String, ArrayList<String>> qqq = (Hashtable)obj;
+		
+		System.out.println(String.valueOf(-100));
+		
+		System.out.println(qqq.get("qqq").get(0));
 	}
 }

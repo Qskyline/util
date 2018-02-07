@@ -1,5 +1,8 @@
 package com.skyline.util;
 
+import java.util.Arrays;
+import org.apache.commons.lang3.StringUtils;
+
 public class StringUtil {
 	public static int compareVersion(Object version1, Object version2) {
 		int[] __version1 = null;
@@ -44,7 +47,54 @@ public class StringUtil {
 		}
 	}
 	
+	public static String bytesToString(byte[] bytes, int len) {
+		return StringUtils.trimToNull(new String(bytes, 0, len));
+	}
+	
+	public static String bytesToString(byte[] bytes) {
+		return bytesToString(bytes, bytes.length);
+	}
+	
+	public static byte[] stringToBytes(String string, int len) {
+		string = StringUtils.trimToNull(string);
+		byte[] result = new byte[len];
+		Arrays.fill(result, (byte)0);
+		System.arraycopy(string.getBytes(), 0, result, 0, Math.min(string.length(), len));
+		return result;
+	}
+	
+	public static byte[] stringToBytes(String string) {
+		string = StringUtils.trimToNull(string);
+		return stringToBytes(string, string.length());
+	}
+	
+	public static long bytesToLong(byte[] bytes) {
+		long result = 0;
+		for (int i=0; i<bytes.length; i++) {
+			result = result | ((bytes[i] & 0xFF) << (8*i));
+		}
+		return result;
+	}
+	
+	public static byte[] longToBytes(long data, int len) {
+		byte[] result = new byte[len];
+		Arrays.fill(result, (byte)0);
+		for(int i=0; i<len; i++) {
+			result[len-i-1] = (byte)((data >> (len-i-1)*8) & 0xFF);
+		}
+		return result;
+	}
+	
+	public static byte[] longToBytes(long data) {
+		return longToBytes(data, 8);
+	}
+	
 	public static void main(String[] args) {
-		System.out.println(compareVersion("1.2.2", "1.2.2"));
+		System.out.println(bytesToLong(new byte[] {(byte)10, (byte)2}));
+		byte[] aa = longToBytes(522, 2);
+		for (byte b : aa) {
+			System.out.println((int)b);
+		}
+		System.out.println(bytesToLong(aa));
 	}
 }
