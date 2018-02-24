@@ -204,10 +204,10 @@ public class NetworkUtil
 					return -1;
 				} catch (Exception e) {}
 				
-				if (path == null) return 0;
+				if (path == null) return -2;
 				File file = new File(path);
 				if (!file.exists()) file.mkdirs();
-				if (!file.isDirectory()) return -2;
+				if (!file.isDirectory()) return -3;
 
 				ServerSocket ss = null;
 				try {
@@ -228,7 +228,7 @@ public class NetworkUtil
 					} catch (IOException e1) {
 						e1.printStackTrace();
 					}
-					return -2;
+					return -4;
 				}
 				return 0;
 			}
