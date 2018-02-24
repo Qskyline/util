@@ -209,27 +209,31 @@ public class NetworkUtil
 				if (!file.exists()) file.mkdirs();
 				if (!file.isDirectory()) return -3;
 
-				ServerSocket ss = null;
-				try {
-					ss = new ServerSocket(port);
-					while (true) {
-						System.out.println("listen " + port + " ...");
-						Socket s = ss.accept();
-						if(callback == null) new TcpFileServer(s, path).run();
-						else new TcpFileServer(s, path, callback).run();
-						if(!isKeep) {
-							ss.close();
-							break;
+				new Thread() {
+					@Override
+					public void run() {
+						ServerSocket ss = null;
+						try {
+							ss = new ServerSocket(port);
+							while (true) {
+								System.out.println("listen " + port + " ...");
+								Socket s = ss.accept();
+								if(callback == null) new TcpFileServer(s, path).run();
+								else new TcpFileServer(s, path, callback).run();
+								if(!isKeep) {
+									ss.close();
+									break;
+								}
+							}
+						} catch (Exception e) {
+							try {
+								if (ss != null) ss.close();
+							} catch (IOException e1) {
+								e1.printStackTrace();
+							}
 						}
 					}
-				} catch (Exception e) {
-					try {
-						if (ss != null) ss.close();
-					} catch (IOException e1) {
-						e1.printStackTrace();
-					}
-					return -4;
-				}
+				}.run();
 				return 0;
 			}
 			
