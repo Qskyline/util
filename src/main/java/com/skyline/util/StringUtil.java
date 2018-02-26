@@ -59,6 +59,7 @@ public class StringUtil {
 		string = StringUtils.trimToNull(string);
 		byte[] result = new byte[len];
 		Arrays.fill(result, (byte)0);
+		if(string == null) return result;
 		System.arraycopy(string.getBytes(), 0, result, 0, Math.min(string.length(), len));
 		return result;
 	}
@@ -70,8 +71,9 @@ public class StringUtil {
 	
 	public static long bytesToLong(byte[] bytes) {
 		long result = 0;
-		for (int i=0; i<bytes.length; i++) {
-			result = result | ((bytes[i] & 0xFF) << (8*i));
+		int len = bytes.length;
+		for (int i=len-1; i>=0; i--) {
+			result = result | (((long)bytes[i]) << (8*(len-1-i)));
 		}
 		return result;
 	}
@@ -80,7 +82,7 @@ public class StringUtil {
 		byte[] result = new byte[len];
 		Arrays.fill(result, (byte)0);
 		for(int i=0; i<len; i++) {
-			result[len-i-1] = (byte)((data >> (len-i-1)*8) & 0xFF);
+			result[i] = (byte)((data >> (len-i-1)*8));
 		}
 		return result;
 	}
@@ -90,10 +92,10 @@ public class StringUtil {
 	}
 	
 	public static void main(String[] args) {
-		System.out.println(bytesToLong(new byte[] {(byte)10, (byte)2}));
-		byte[] aa = longToBytes(522, 2);
-		for (byte b : aa) {
-			System.out.println((int)b);
+		System.out.println(bytesToLong(new byte[] {(byte)-1, (byte)-1, (byte)-1, (byte)-1, (byte)-1, (byte)-7}));
+		byte[] aa = longToBytes(-7, 6);
+		for (int i=0; i<aa.length; i++) {
+			System.out.println((int)aa[i]);
 		}
 		System.out.println(bytesToLong(aa));
 	}

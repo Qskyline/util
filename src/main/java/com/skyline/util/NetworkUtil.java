@@ -161,10 +161,13 @@ public class NetworkUtil
 		writer.close();
 	}
 	
-	private static class TcpFileOperation {
+	public static class TcpFileOperation {
 		private int buffer = 1024 * 1024;
-		private int first_sector = 256;
-		private int second_sector = 6;
+		private int fileName_sector = 256;
+		private int fileSize_sector = 6;
+		private int params_sector = 1024;
+		private int errorMsg_sector = 256;
+		private int errorCode_sector = 6;
 		private TcpFileServer tcpFileServer = new TcpFileServer();
 		private TcpFileClient tcpFileClient = new TcpFileClient();
 		
@@ -173,31 +176,31 @@ public class NetworkUtil
 			return tcpFileOperation;
 		}
 		
-		public int TcpFileServerListen(int port, String path, boolean isKeep, CallBack callback) {
-			return tcpFileServer.listen(port, path, isKeep, callback);
+		public int TcpFileServerListen(int port, String path, boolean isKeep, CallBack callback, Auth auth) {
+			return tcpFileServer.listen(port, path, isKeep, callback, auth);
 		}
-		public int TcpFileClientSend(String url, int desPort, int sourcePort, String filePath) {
-			return tcpFileClient.sendFile(url, desPort, sourcePort, filePath);
+		public int TcpFileClientSend(String url, int desPort, int sourcePort, String filePath, String params) {
+			return tcpFileClient.sendFile(url, desPort, sourcePort, filePath, params);
 		}
 		
 		private class TcpFileServer extends Thread {
 			private Socket socket;
 			private String path;
 			private CallBack callback;
+			private Auth auth;
 			
-			public TcpFileServer(Socket socket, String path, CallBack callback) {
+			public TcpFileServer(Socket socket, String path, CallBack callback, Auth auth) {
 				this.socket = socket;
 				this.path = path;
 				this.callback = callback;
+				this.auth = auth;
 			}
-			public TcpFileServer(Socket socket, String path) {
-				this(socket, path, new DoNothingCallBack());
-			}
+			
 			public TcpFileServer() {
-				this(null, null, new DoNothingCallBack());
+				this(null, null, null, null);
 			}
 
-			public int listen(int port, String path, boolean isKeep, CallBack callback) {
+			public int listen(int port, String path, boolean isKeep, CallBack callback, Auth auth) {
 				try {
 					Socket socket = new Socket("127.0.0.1", port);
 					socket.close();
@@ -208,32 +211,29 @@ public class NetworkUtil
 				File file = new File(path);
 				if (!file.exists()) file.mkdirs();
 				if (!file.isDirectory()) return -3;
-
-				new Thread() {
-					@Override
-					public void run() {
-						ServerSocket ss = null;
-						try {
-							ss = new ServerSocket(port);
-							while (true) {
-								System.out.println("listen " + port + " ...");
-								Socket s = ss.accept();
-								if(callback == null) new TcpFileServer(s, path).run();
-								else new TcpFileServer(s, path, callback).run();
-								if(!isKeep) {
-									ss.close();
-									break;
-								}
-							}
-						} catch (Exception e) {
-							try {
-								if (ss != null) ss.close();
-							} catch (IOException e1) {
-								e1.printStackTrace();
-							}
+				
+				ServerSocket ss = null;
+				try {
+					ss = new ServerSocket(port);
+					while (true) {
+						System.out.println("listen " + port + " ...");
+						Socket s = ss.accept();
+						if(callback == null) callback = new DoNothingCallBack();
+						if(auth == null) auth = new Auth();
+						new TcpFileServer(s, path, callback, auth).run();
+						if(!isKeep) {
+							ss.close();
+							break;
 						}
 					}
-				}.run();
+				} catch (Exception e) {
+					try {
+						if (ss != null) ss.close();
+					} catch (IOException e1) {
+						e1.printStackTrace();
+					}
+					return -4;
+				}
 				return 0;
 			}
 			
@@ -251,16 +251,28 @@ public class NetworkUtil
 						bis = new BufferedInputStream(socket.getInputStream());
 						bos = new BufferedOutputStream(socket.getOutputStream());
 						
-						byte[] _fileName = new byte[first_sector];
-						len = bis.read(_fileName, 0, first_sector);
+						byte[] _params = new byte[params_sector];
+						len = bis.read(_params, 0, params_sector);
+						if (len == -1) {
+							communicateHelp("Fetch params error.", -6, bos);
+							break;
+						}
+						String params = StringUtil.bytesToString(_params, len);
+						if(!auth.isPermitted(params)) {
+							communicateHelp("Auth Failed.", -7, bos);
+							break;
+						}
+						
+						byte[] _fileName = new byte[fileName_sector];
+						len = bis.read(_fileName, 0, fileName_sector);
 						if (len == -1) {
 							communicateHelp("Fetch fileName error.", -1, bos);
 							break;
 						}
 						String fileName = StringUtil.bytesToString(_fileName, len);
 
-						byte[] _fileSize = new byte[second_sector];
-						len = bis.read(_fileSize, 0, second_sector);
+						byte[] _fileSize = new byte[fileSize_sector];
+						len = bis.read(_fileSize, 0, fileSize_sector);
 						if (len == -1) {
 							communicateHelp("Fetch fileSize error.", -2, bos);
 							break;
@@ -317,10 +329,10 @@ public class NetworkUtil
 			
 			private void communicateHelp(String errorMsg, int errorCode, BufferedOutputStream bos) {
 				try {
-					byte[] _errorMsg = StringUtil.stringToBytes(errorMsg, first_sector);
-					byte[] _errorCode = StringUtil.longToBytes(errorCode, second_sector);
-					bos.write(_errorMsg, 0, first_sector);
-					bos.write(_errorCode, 0, second_sector);
+					byte[] _errorMsg = StringUtil.stringToBytes(errorMsg, errorMsg_sector);
+					byte[] _errorCode = StringUtil.longToBytes(errorCode, errorCode_sector);
+					bos.write(_errorMsg, 0, errorMsg_sector);
+					bos.write(_errorCode, 0, errorCode_sector);
 					bos.flush();
 					if (errorCode < 0) {
 						this.callback.faied(errorCode);
@@ -335,7 +347,7 @@ public class NetworkUtil
 		}
 		
 		private class TcpFileClient {
-			public int sendFile(String url, int desPort, int sourcePort, String filePath) {
+			public int sendFile(String url, int desPort, int sourcePort, String filePath, String params) {
 				File file = new File(filePath);
 				if (!file.exists())
 					return -11;
@@ -356,13 +368,15 @@ public class NetworkUtil
 						bos = new BufferedOutputStream(s.getOutputStream());
 						bis = new BufferedInputStream(s.getInputStream());
 	
+						byte[] _params = StringUtil.stringToBytes(params, params_sector);
 						String fileName = StringUtils.substringAfterLast(filePath, "/");
-						byte[] _fileName = StringUtil.stringToBytes(fileName, first_sector);
+						byte[] _fileName = StringUtil.stringToBytes(fileName, fileName_sector);
 						long fileSize = file.length();
-						byte[] _fileSize = StringUtil.longToBytes(fileSize, second_sector);						
+						byte[] _fileSize = StringUtil.longToBytes(fileSize, fileSize_sector);
 						
-						bos.write(_fileName, 0, first_sector);
-						bos.write(_fileSize, 0, second_sector);
+						bos.write(_params, 0, params_sector);
+						bos.write(_fileName, 0, fileName_sector);
+						bos.write(_fileSize, 0, fileSize_sector);
 						bos.flush();
 	
 						if((result = (int)chargeHelp(bis)) != 0) break;
@@ -394,16 +408,16 @@ public class NetworkUtil
 		
 			private long chargeHelp(BufferedInputStream bis) throws IOException {
 				int len = 0;
-				byte[] _errorMsg = new byte[first_sector];
-				len = bis.read(_errorMsg, 0, first_sector);
+				byte[] _errorMsg = new byte[errorMsg_sector];
+				len = bis.read(_errorMsg, 0, errorMsg_sector);
 				if (len == -1) {
 					return -13;
 				}
 				String errorMsg = StringUtil.bytesToString(_errorMsg, len);
 				System.out.println("errorMsg: " + errorMsg);
 				
-				byte[] _errorCode = new byte[second_sector];
-				len = bis.read(_errorCode, 0, second_sector);
+				byte[] _errorCode = new byte[errorCode_sector];
+				len = bis.read(_errorCode, 0, errorCode_sector);
 				if (len == -1) {
 					return -14;
 				}
@@ -421,11 +435,17 @@ public class NetworkUtil
 			public void faied(int errorCode) {
 			}
 		}
-	}
-	
-	public static interface CallBack {
-		public void success();
-		public void faied(int errorCode);
+		
+		public static interface CallBack {
+			public void success();
+			public void faied(int errorCode);
+		}
+		
+		public static class Auth {
+			public boolean isPermitted(String params) {
+				return true;
+			}
+		}
 	}
 	
 	public static int tcpFileServerListen(int port, String path) {
@@ -434,8 +454,11 @@ public class NetworkUtil
 	public static int tcpFileServerListen(int port, String path, boolean isKeep) {
 		return tcpFileServerListen(port, path, isKeep, null);
 	}
-	public static int tcpFileServerListen(int port, String path, boolean isKeep, CallBack callback) {
-		return TcpFileOperation.getInstance().TcpFileServerListen(port, path, isKeep, callback);
+	public static int tcpFileServerListen(int port, String path, boolean isKeep, TcpFileOperation.CallBack callback) {
+		return tcpFileServerListen(port, path, isKeep, callback, null);
+	}
+	public static int tcpFileServerListen(int port, String path, boolean isKeep, TcpFileOperation.CallBack callback, TcpFileOperation.Auth auth) {
+		return TcpFileOperation.getInstance().TcpFileServerListen(port, path, isKeep, callback, auth);
 	}
 	
 	/**
@@ -458,12 +481,19 @@ public class NetworkUtil
 	 * 0: preCheck success.
 	 * 1: fileSave success.
 	 */
+	public static int tcpFileClientSend(String url, int desPort, int sourcePort, String filePath, String params) {
+		return TcpFileOperation.getInstance().TcpFileClientSend(url, desPort, sourcePort, filePath, params);
+	}
 	public static int tcpFileClientSend(String url, int desPort, int sourcePort, String filePath) {
-		return TcpFileOperation.getInstance().TcpFileClientSend(url, desPort, sourcePort, filePath);
+		return tcpFileClientSend(url, desPort, sourcePort, filePath, null);
 	}
 		
     public static void main( String[] args )
     {
-        tcpFileServerListen(11039, "D:/kingdeecloudbackup");
+        tcpFileServerListen(11039, "D:/kingdeecloudbackup", false, null, new TcpFileOperation.Auth(){
+        	public boolean isPermitted(String params) {
+				return false;
+			}
+        });
     }
 }
