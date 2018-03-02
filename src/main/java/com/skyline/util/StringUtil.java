@@ -69,34 +69,6 @@ public class StringUtil {
 		return stringToBytes(string, string.length());
 	}
 	
-	public static long bytesToLong(byte[] bytes) {
-		long result = 0;
-		int len = bytes.length;
-		for (int i=len-1; i>=0; i--) {
-			result = result | (((long)bytes[i]) << (8*(len-1-i)));
-		}
-		return result;
-	}
-	
-	public static byte[] longToBytes(long data, int len) {
-		byte[] result = new byte[len];
-		Arrays.fill(result, (byte)0);
-		for(int i=0; i<len; i++) {
-			result[i] = (byte)((data >> (len-i-1)*8));
-		}
-		return result;
-	}
-	
-	public static byte[] longToBytes(long data) {
-		return longToBytes(data, 8);
-	}
-	
 	public static void main(String[] args) {
-		System.out.println(bytesToLong(new byte[] {(byte)-1, (byte)-1, (byte)-1, (byte)-1, (byte)-1, (byte)-7}));
-		byte[] aa = longToBytes(-7, 6);
-		for (int i=0; i<aa.length; i++) {
-			System.out.println((int)aa[i]);
-		}
-		System.out.println(bytesToLong(aa));
 	}
 }

@@ -18,6 +18,7 @@ import java.net.Socket;
 import java.net.URL;
 import java.net.URLConnection;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import javax.servlet.http.HttpServletResponse;
@@ -164,10 +165,10 @@ public class NetworkUtil
 	public static class TcpFileOperation {
 		private int buffer = 1024 * 1024;
 		private int fileName_sector = 256;
-		private int fileSize_sector = 6;
+//		private int fileSize_sector = 6;
 		private int params_sector = 1024;
 		private int errorMsg_sector = 256;
-		private int errorCode_sector = 6;
+//		private int errorCode_sector = 6;
 		private TcpFileServer tcpFileServer = new TcpFileServer();
 		private TcpFileClient tcpFileClient = new TcpFileClient();
 		
@@ -212,28 +213,34 @@ public class NetworkUtil
 				if (!file.exists()) file.mkdirs();
 				if (!file.isDirectory()) return -3;
 				
-				ServerSocket ss = null;
-				try {
-					ss = new ServerSocket(port);
-					while (true) {
-						System.out.println("listen " + port + " ...");
-						Socket s = ss.accept();
-						if(callback == null) callback = new DoNothingCallBack();
-						if(auth == null) auth = new Auth();
-						new TcpFileServer(s, path, callback, auth).run();
-						if(!isKeep) {
-							ss.close();
-							break;
+				new Thread() {
+					@Override
+					public void run() {
+						ServerSocket ss = null;
+						try {
+							ss = new ServerSocket(port);
+							while (true) {
+								System.out.println("listen " + port + " ...");
+								Socket s = ss.accept();
+								CallBack _callback = callback;
+								Auth _auth = auth;
+								if(_callback == null) _callback = new DoNothingCallBack();
+								if(_auth == null) _auth = new Auth();
+								new TcpFileServer(s, path, _callback, _auth).start();
+								if(!isKeep) {
+									ss.close();
+									break;
+								}
+							}
+						} catch (Exception e) {
+							try {
+								if (ss != null) ss.close();
+							} catch (IOException e1) {
+								e1.printStackTrace();
+							}
 						}
 					}
-				} catch (Exception e) {
-					try {
-						if (ss != null) ss.close();
-					} catch (IOException e1) {
-						e1.printStackTrace();
-					}
-					return -4;
-				}
+				}.start();
 				return 0;
 			}
 			
@@ -271,13 +278,13 @@ public class NetworkUtil
 						}
 						String fileName = StringUtil.bytesToString(_fileName, len);
 
-						byte[] _fileSize = new byte[fileSize_sector];
-						len = bis.read(_fileSize, 0, fileSize_sector);
+						byte[] _fileSize = new byte[8];
+						len = bis.read(_fileSize, 0, 8);
 						if (len == -1) {
 							communicateHelp("Fetch fileSize error.", -2, bos);
 							break;
 						}
-						long fileSize = StringUtil.bytesToLong(_fileSize);
+						long fileSize = bytesToLong(_fileSize);
 						if (fileSize <= 0) {
 							communicateHelp("Fetch fileSize error.", -2, bos);
 							break;
@@ -330,9 +337,9 @@ public class NetworkUtil
 			private void communicateHelp(String errorMsg, int errorCode, BufferedOutputStream bos) {
 				try {
 					byte[] _errorMsg = StringUtil.stringToBytes(errorMsg, errorMsg_sector);
-					byte[] _errorCode = StringUtil.longToBytes(errorCode, errorCode_sector);
+					byte[] _errorCode = new byte[] {(byte)errorCode};
 					bos.write(_errorMsg, 0, errorMsg_sector);
-					bos.write(_errorCode, 0, errorCode_sector);
+					bos.write(_errorCode, 0, 1);
 					bos.flush();
 					if (errorCode < 0) {
 						this.callback.faied(errorCode);
@@ -372,11 +379,11 @@ public class NetworkUtil
 						String fileName = StringUtils.substringAfterLast(filePath, "/");
 						byte[] _fileName = StringUtil.stringToBytes(fileName, fileName_sector);
 						long fileSize = file.length();
-						byte[] _fileSize = StringUtil.longToBytes(fileSize, fileSize_sector);
+						byte[] _fileSize = longToBytes(fileSize);
 						
 						bos.write(_params, 0, params_sector);
 						bos.write(_fileName, 0, fileName_sector);
-						bos.write(_fileSize, 0, fileSize_sector);
+						bos.write(_fileSize, 0, 8);
 						bos.flush();
 	
 						if((result = (int)chargeHelp(bis)) != 0) break;
@@ -416,12 +423,12 @@ public class NetworkUtil
 				String errorMsg = StringUtil.bytesToString(_errorMsg, len);
 				System.out.println("errorMsg: " + errorMsg);
 				
-				byte[] _errorCode = new byte[errorCode_sector];
-				len = bis.read(_errorCode, 0, errorCode_sector);
+				byte _errorCode[] = new byte[1];
+				len = bis.read(_errorCode, 0, 1);
 				if (len == -1) {
 					return -14;
 				}
-				long errorCode = StringUtil.bytesToLong(_errorCode);
+				int errorCode = _errorCode[0];
 				System.out.println("errorCode: " + errorCode);
 				return errorCode;
 			}
@@ -445,6 +452,25 @@ public class NetworkUtil
 			public boolean isPermitted(String params) {
 				return true;
 			}
+		}
+		
+		public long bytesToLong(byte[] bytes) {
+			long result = 0;
+			int len = bytes.length;
+			for (int i=len-1; i>=0; i--) {
+				result = result | ((bytes[i] & 0xFF) << (8*(len-1-i)));
+			}
+			return result;
+		}
+		
+		public byte[] longToBytes(long data) {
+			int len = 8;
+			byte[] result = new byte[len];
+			Arrays.fill(result, (byte)0);
+			for(int i=0; i<len; i++) {
+				result[i] = (byte)(data >> (len-i-1)*8);
+			}
+			return result;
 		}
 	}
 	
@@ -487,10 +513,10 @@ public class NetworkUtil
 	public static int tcpFileClientSend(String url, int desPort, int sourcePort, String filePath) {
 		return tcpFileClientSend(url, desPort, sourcePort, filePath, null);
 	}
-		
+	
     public static void main( String[] args )
     {
-        tcpFileServerListen(11039, "D:/kingdeecloudbackup", false, null, new TcpFileOperation.Auth(){
+        tcpFileServerListen(11039, "D:/kingdeecloudbackup", true, null, new TcpFileOperation.Auth(){
         	public boolean isPermitted(String params) {
 				return false;
 			}
