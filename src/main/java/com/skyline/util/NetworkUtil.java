@@ -493,6 +493,7 @@ public class NetworkUtil
 	 * @param desPort
 	 * @param sourcePort
 	 * @param filePath
+	 * @param params
 	 * @return 
 	 * -11: File is not exist.
 	 * -12: The path is not file.
