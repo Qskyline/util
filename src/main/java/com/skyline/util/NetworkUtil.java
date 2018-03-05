@@ -458,7 +458,7 @@ public class NetworkUtil
 			long result = 0;
 			int len = bytes.length;
 			for (int i=len-1; i>=0; i--) {
-				result = result | ((bytes[i] & 0xFF) << (8*(len-1-i)));
+				result = result | (((long)(bytes[i] & 0xFF)) << (8*(len-1-i)));
 			}
 			return result;
 		}
