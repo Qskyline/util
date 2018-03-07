@@ -23,7 +23,7 @@ public class Test {
          data.put("sign", sign);
          data.put("data", json.toString());
 
-         String filePath = "D:/kingdeecloudbackup/qwe/agent.zip";
+         String filePath = "/Users/skyline/Desktop/settings.xml";
          int result = NetworkUtil.tcpFileClientSend(ip, 6666, 8888, filePath, data.toString());
          System.out.println(result);
 	 }
