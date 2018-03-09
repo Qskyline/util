@@ -1,14 +1,11 @@
 package com.skyline.util;
 
-import java.security.NoSuchAlgorithmException;
-import net.sf.json.JSONObject;
-
 public class Test {
 	 public static void main( String[] args )
 	 {
-//		 NetworkUtil.tcpFileClientSend("127.0.0.1", 6666, 11023, "D:/kingdeecloudbackup/qwe/agent.zip");
-	 
-		 String ip = "172.20.70.100";
+		 NetworkUtil.tcpFileClientSend("127.0.0.1", 11039, 11023, "/Users/skyline/Downloads/ierp.tar");
+
+		/* String ip = "172.20.70.100";
          JSONObject json = new JSONObject();
          long timestamp = System.currentTimeMillis();
          String sign = null;
@@ -25,6 +22,6 @@ public class Test {
 
          String filePath = "/Users/skyline/Desktop/settings.xml";
          int result = NetworkUtil.tcpFileClientSend(ip, 6666, 8888, filePath, data.toString());
-         System.out.println(result);
+         System.out.println(result);*/
 	 }
 }
