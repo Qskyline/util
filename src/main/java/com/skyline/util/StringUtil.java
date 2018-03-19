@@ -60,13 +60,12 @@ public class StringUtil {
 		byte[] result = new byte[len];
 		Arrays.fill(result, (byte)0);
 		if(string == null) return result;
-		System.arraycopy(string.getBytes(), 0, result, 0, Math.min(string.length(), len));
+		System.arraycopy(string.getBytes(), 0, result, 0, Math.min(string.getBytes().length, len));
 		return result;
 	}
 	
 	public static byte[] stringToBytes(String string) {
-		string = StringUtils.trimToNull(string);
-		return stringToBytes(string, string.length());
+		return stringToBytes(string, string.getBytes().length);
 	}
 	
 	public static void main(String[] args) {
