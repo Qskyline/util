@@ -6,7 +6,7 @@
 	<version>0.0.9</version>
 	<packaging>jar</packaging>
 	<name>util</name>
-	<description>utiliy tools library</description>
+	<description>utility tools library</description>
 	<url>https://github.com/Qskyline/util</url>
 	
 	<licenses>
