@@ -1,5 +1,6 @@
 package com.skyline.util;
 
+import java.io.UnsupportedEncodingException;
 import java.util.Arrays;
 import org.apache.commons.lang3.StringUtils;
 
@@ -48,7 +49,12 @@ public class StringUtil {
 	}
 	
 	public static String bytesToString(byte[] bytes, int len) {
-		return StringUtils.trimToNull(new String(bytes, 0, len));
+		try {
+			return StringUtils.trimToNull(new String(bytes, 0, len, "UTF-8"));
+		} catch (UnsupportedEncodingException e) {
+			e.printStackTrace();
+			return null;
+		}
 	}
 	
 	public static String bytesToString(byte[] bytes) {
@@ -60,12 +66,22 @@ public class StringUtil {
 		byte[] result = new byte[len];
 		Arrays.fill(result, (byte)0);
 		if(string == null) return result;
-		System.arraycopy(string.getBytes(), 0, result, 0, Math.min(string.getBytes().length, len));
+		try {
+			System.arraycopy(string.getBytes("UTF-8"), 0, result, 0, Math.min(string.getBytes("UTF-8").length, len));
+		} catch (UnsupportedEncodingException e) {
+			e.printStackTrace();
+			return null;
+		}
 		return result;
 	}
 	
 	public static byte[] stringToBytes(String string) {
-		return stringToBytes(string, string.getBytes().length);
+		try {
+			return stringToBytes(string, string.getBytes("UTF-8").length);
+		} catch (UnsupportedEncodingException e) {
+			e.printStackTrace();
+			return null;
+		}
 	}
 	
 	public static void main(String[] args) {
