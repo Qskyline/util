@@ -1,5 +1,7 @@
 package com.skyline.util;
 
+import java.io.*;
+
 public class Test {
 	 public static void main( String[] args )
 	 {
@@ -23,5 +25,16 @@ public class Test {
          String filePath = "/Users/skyline/Desktop/settings.xml";
          int result = NetworkUtil.tcpFileClientSend(ip, 6666, 8888, filePath, data.toString());
          System.out.println(result);*/
+
+		 /*VerifyCode verifyCode = new VerifyCode();
+
+		 File file = new File("/Users/skyline/Temp/qwert.png");
+
+		 try {
+			 VerifyCode.output(verifyCode.getImage(), new FileOutputStream(file, true));
+		 } catch (IOException e) {
+			 e.printStackTrace();
+		 }*/
 	 }
+
 }
