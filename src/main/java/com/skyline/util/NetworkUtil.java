@@ -89,13 +89,21 @@ public class NetworkUtil {
 	}
 	
 	public static boolean download(String _url, String params, String filePath, JSONObject json) throws IOException {
+		boolean isPost = false;
+		if (StringUtils.startsWithIgnoreCase(_url, "post@http://")) {
+			isPost = true;
+			_url = "http://" + StringUtils.substringAfter(_url, "post@http://");
+		}
+
 		URL url = new URL(_url);
 		URLConnection conn = url.openConnection();
 		conn.setRequestProperty("charset", "utf-8");
 		conn.setRequestProperty("accept", "*/*");
 		conn.setRequestProperty("connection", "Keep-Alive");
-		conn.setDoOutput(true);
-        conn.setDoInput(true);
+		if (isPost) {
+            conn.setDoOutput(true);
+            conn.setDoInput(true);
+        }
         PrintWriter out = new PrintWriter(conn.getOutputStream());
         out.print(params);
         out.flush();
@@ -513,8 +521,7 @@ public class NetworkUtil {
 		return tcpFileClientSend(url, desPort, sourcePort, filePath, null);
 	}
 	
-    public static void main( String[] args )
-    {
+    public static void main( String[] args ) {
         tcpFileServerListen(11039, "/Users/skyline/Documents", false, null, new TcpFileOperation.Auth(){
         	public boolean isPermitted(String params) {
         		setSecondPath("/test");
