@@ -2,6 +2,7 @@ package com.skyline.util;
 
 import net.sf.json.JSONObject;
 import org.apache.commons.lang.StringUtils;
+import org.apache.http.Header;
 import org.apache.http.HttpEntity;
 import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.entity.UrlEncodedFormEntity;
@@ -19,9 +20,13 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
-public class NetworkUtil 
-{
+public class NetworkUtil {
+
 	public static String sendPost(String url, String params) throws IOException {
+		return sendPost(url, params, null);
+	}
+
+	public static String sendPost(String url, String params, Header[] headers) throws IOException {
 		String result = null;
 		
 		String[] param = params.split("&");
@@ -39,7 +44,10 @@ public class NetworkUtil
                 .setSocketTimeout(50000).build();
 		httppost.setConfig(requestConfig);
 		httppost.setEntity(uefEntity);
-		
+		if (headers != null && headers.length > 0) {
+			httppost.setHeaders(headers);
+		}
+
 		CloseableHttpClient httpClient = HttpClients.createDefault();
 		CloseableHttpResponse response = httpClient.execute(httppost); 
 		
