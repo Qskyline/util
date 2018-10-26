@@ -89,18 +89,12 @@ public class NetworkUtil {
 	}
 	
 	public static boolean download(String _url, String params, String filePath, JSONObject json) throws IOException {
-		boolean isPost = false;
-		if (StringUtils.startsWithIgnoreCase(_url, "post@http://")) {
-			isPost = true;
-			_url = "http://" + StringUtils.substringAfter(_url, "post@http://");
-		}
-
 		URL url = new URL(_url);
 		URLConnection conn = url.openConnection();
 		conn.setRequestProperty("charset", "utf-8");
 		conn.setRequestProperty("accept", "*/*");
 		conn.setRequestProperty("connection", "Keep-Alive");
-		if (isPost) {
+		if (params != null) {
             conn.setDoOutput(true);
             conn.setDoInput(true);
 			PrintWriter out = new PrintWriter(conn.getOutputStream());
