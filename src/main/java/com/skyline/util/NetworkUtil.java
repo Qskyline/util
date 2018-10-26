@@ -103,11 +103,11 @@ public class NetworkUtil {
 		if (isPost) {
             conn.setDoOutput(true);
             conn.setDoInput(true);
-        }
-        PrintWriter out = new PrintWriter(conn.getOutputStream());
-        out.print(params);
-        out.flush();
-        
+			PrintWriter out = new PrintWriter(conn.getOutputStream());
+			out.print(params);
+			out.flush();
+		}
+
         Map<String, List<String>> _headers = conn.getHeaderFields();
         JSONObject headers = new JSONObject();
         if(_headers != null) {
@@ -136,7 +136,7 @@ public class NetworkUtil {
             	json.put("data", result);
             }
             return false;
-		} else if (contentType.toLowerCase().contains("application/octet-stream")) {
+		} else if (contentType.toLowerCase().contains("application/octet-stream") || contentType.toLowerCase().contains("application/zip")) {
 			DataOutputStream dos = new DataOutputStream(new BufferedOutputStream(new FileOutputStream(new File(filePath),false)));
 			DataInputStream dis = new DataInputStream(new BufferedInputStream(conn.getInputStream()));
 			byte[] _buff = new byte[2048];
@@ -522,11 +522,18 @@ public class NetworkUtil {
 	}
 	
     public static void main( String[] args ) {
-        tcpFileServerListen(11039, "/Users/skyline/Documents", false, null, new TcpFileOperation.Auth(){
+        /*tcpFileServerListen(11039, "/Users/skyline/Documents", false, null, new TcpFileOperation.Auth(){
         	public boolean isPermitted(String params) {
         		setSecondPath("/test");
 				return true;
 			}
-        });
-    }
+        });*/
+
+        JSONObject json = new JSONObject();
+		try {
+			download("http://172.18.5.42:88/biz-dev/apppackage/bd-bd.zip", null, "/Users/skyline/Downloads/bd-bd-1.zip", json);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
 }
