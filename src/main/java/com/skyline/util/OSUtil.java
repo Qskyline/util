@@ -55,6 +55,7 @@ public class OSUtil {
 		private String std_out;
 		private String std_err;
 		private String std_in;
+		private int exist_code;
 
 		public String getStd_out() {
 			return std_out;
@@ -76,6 +77,13 @@ public class OSUtil {
 		public void setStd_in(String std_in) {
 			this.std_in = std_in;
 		}
+
+		public int getExist_code() {
+			return exist_code;
+		}
+		public void setExist_code(int exist_code) {
+			this.exist_code = exist_code;
+		}
 	}
 
 	public static ShellResult execShell(String ip, int port, String user, String password, String shell) {
@@ -91,6 +99,7 @@ public class OSUtil {
 				shellResult.setStd_out(processStdout(session.getStdout(), DEFAULTCHART));
 				shellResult.setStd_err(processStdout(session.getStderr(), DEFAULTCHART));
 				shellResult.setStd_in(shell);
+				shellResult.setExist_code(session.getExitStatus());
 				session.close();
 			}
 			conn.close();
