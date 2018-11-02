@@ -294,6 +294,35 @@ public class OSUtil {
 		return shellResult;
 	}
 
+	public static boolean replaceStringInFile(File file , String match_str, String dst_str) {
+		try {
+			BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(file), "UTF-8"));
+			CharArrayWriter caw = new CharArrayWriter();
+			String line;
+			while((line = br.readLine()) != null){
+				line = line.replaceAll(match_str, dst_str);
+				caw.write(line);
+				caw.append(System.getProperty("line.separator"));
+			}
+			br.close();
+
+			FileWriter fw=new FileWriter(file);
+			caw.writeTo(fw);
+			fw.close();
+		} catch (UnsupportedEncodingException e) {
+			e.printStackTrace();
+			return false;
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+			return false;
+		} catch (IOException e) {
+			e.printStackTrace();
+			return false;
+		}
+		return true;
+	}
+
 	public static void main(String[] args) {
+		System.out.println(replaceStringInFile(new File("/Users/skyline/Downloads/ierp_dev0724.conf"), "server\\s+web-8080-331101.kcssz.cloud.kingdee.com", "server 127.0.0.1:1024"));
 	}
 }
