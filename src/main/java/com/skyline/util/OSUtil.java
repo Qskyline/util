@@ -459,7 +459,7 @@ public class OSUtil {
 				String tmp_file_name = new File(srcFile.getFilePath()).getName();
 				getFile(new SCPClient(srcFile.getConn()), srcFile.getFilePath(), System.getProperty("java.io.tmpdir"));
 				File tmp_file = new File(System.getProperty("java.io.tmpdir") + tmp_file_name);
-				putFile(new SCPClient(dstFile.getConn()), tmp_file,dstFile.getFilePath());
+				putFile(new SCPClient(dstFile.getConn()), tmp_file, dstFile.getFilePath());
 				tmp_file.deleteOnExit();
 			}
 		}
