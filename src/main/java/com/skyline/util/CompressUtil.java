@@ -135,8 +135,7 @@ public class CompressUtil {
 		} else if (!outputDirFile.exists()) {
 			outputDirFile.mkdirs();
 		}
-		char t = System.getProperty("line.separator").charAt(0);
-		outputDir = StringUtil.trim(outputDir, t) + t;
+		outputDir = StringUtil.trim(outputDir, File.separatorChar) + File.separatorChar;
 
 		boolean isSingleFileExtract = StringUtils.isNotBlank(fileName);
 
