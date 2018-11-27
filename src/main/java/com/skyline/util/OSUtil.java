@@ -466,7 +466,7 @@ public class OSUtil {
 	}
 
 	private static void putFile(SCPClient client, File localFile, String dstDirectory) throws IOException {
-		SCPOutputStream scpOutputStream = client.put(localFile.getName(), localFile.length(), dstDirectory, null);
+		SCPOutputStream scpOutputStream = client.put(localFile.getName(), localFile.length(), dstDirectory, "0755");
 		BufferedInputStream bis = new BufferedInputStream(new FileInputStream(localFile));
 		int len;
 		byte[] bytes = new byte[10240];
@@ -479,11 +479,14 @@ public class OSUtil {
 	}
 
 	private static void getFile(SCPClient client, String remoteFile, String dstDirectory) throws IOException {
-        char t = System.getProperty("line.separator").charAt(0);
-        dstDirectory = StringUtil.trim(dstDirectory, t) + t;
+        dstDirectory = StringUtil.trim(dstDirectory, File.separatorChar, 1) + File.separatorChar;
 		String fileName = new File(remoteFile).getName();
+		File file = new File(dstDirectory + fileName);
+		if (!file.exists()) {
+		    file.createNewFile();
+        }
 		SCPInputStream scpInputStream = client.get(remoteFile);
-		BufferedOutputStream bos = new BufferedOutputStream(new FileOutputStream(new File(dstDirectory + fileName)));
+		BufferedOutputStream bos = new BufferedOutputStream(new FileOutputStream(file));
 		int len;
 		byte[] bytes = new byte[10240];
 		while ((len = scpInputStream.read(bytes)) != -1) {

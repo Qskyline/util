@@ -94,18 +94,24 @@ public class StringUtil {
 		return sw.toString();
 	}
 
-	public static String trim(String args, char beTrim) {
+	public static String trim(String args, char beTrim, int flag) {
 		int st = 0;
 		int len = args.length();
 		char[] val = args.toCharArray();
 		char sbeTrim = beTrim;
-		while ((st < len) && (val[st] == sbeTrim)) {
-			st++;
-		}
-		while ((len > st) && (val[len - 1] == sbeTrim)) {
-			len--;
+		if (flag == 0) {
+			while ((st < len) && (val[st] == sbeTrim)) { st++; }
+		} else if (flag == 1) {
+			while ((len > st) && (val[len - 1] == sbeTrim)) { len--; }
+		} else {
+			while ((st < len) && (val[st] == sbeTrim)) { st++; }
+			while ((len > st) && (val[len - 1] == sbeTrim)) { len--; }
 		}
 		return args.substring(st, len);
+	}
+
+	public static String trim(String args, char beTrim) {
+		return trim(args, beTrim, 2);
 	}
 
 	public static void main(String[] args) {
