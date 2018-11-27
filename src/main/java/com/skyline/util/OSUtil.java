@@ -1,18 +1,22 @@
 package com.skyline.util;
 
-import ch.ethz.ssh2.Connection;
-import ch.ethz.ssh2.Session;
-import ch.ethz.ssh2.StreamGobbler;
+import ch.ethz.ssh2.*;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.*;
 import java.net.*;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.List;
 
 public class OSUtil {
+
+	static Logger logger = LoggerFactory.getLogger(OSUtil.class);
+
 	public static List<String> getLanIp() throws SocketException, UnknownHostException {
 		ArrayList<String> result = new ArrayList<String>();
 		ArrayList<String> candidateAddresses = new ArrayList<String>();
@@ -86,26 +90,30 @@ public class OSUtil {
 		}
 	}
 
-	public static ShellResult execShell(String ip, int port, String user, String password, String shell) {
-		String DEFAULTCHART = "UTF-8";
-		ShellResult shellResult = null;
-		try {
-			Connection conn = new Connection(ip, port);
-			conn.connect();
-			if (conn.authenticateWithPassword(user, password)) {
-				Session session = conn.openSession();
-				session.execCommand(shell);
-				shellResult = new ShellResult();
-				shellResult.setStd_out(processStdout(session.getStdout(), DEFAULTCHART));
-				shellResult.setStd_err(processStdout(session.getStderr(), DEFAULTCHART));
-				shellResult.setStd_in(shell);
-				shellResult.setExist_code(session.getExitStatus());
-				session.close();
-			}
+	public static ShellResult execShell(String ip, int port, String user, String password, String shell) throws IOException {
+		Connection conn = new Connection(ip, port);
+		conn.connect();
+		if (conn.authenticateWithPassword(user, password)) {
+			ShellResult shellResult = execShell(conn, shell);
 			conn.close();
-		} catch (IOException e) {
-			e.printStackTrace();
+			return shellResult;
+		} else {
+			conn.close();
+			throw new IOException("Authentication failed");
 		}
+	}
+
+	public static ShellResult execShell(Connection conn, String shell) throws IOException {
+		String DEFAULTCHART = "UTF-8";
+		ShellResult shellResult;
+		Session session = conn.openSession();
+		session.execCommand(shell);
+		shellResult = new ShellResult();
+		shellResult.setStd_out(processStdout(session.getStdout(), DEFAULTCHART));
+		shellResult.setStd_err(processStdout(session.getStderr(), DEFAULTCHART));
+		shellResult.setStd_in(shell);
+		shellResult.setExist_code(session.getExitStatus());
+		session.close();
 		return shellResult;
 	}
 
@@ -134,6 +142,9 @@ public class OSUtil {
 		private String scpUser;
 		private String scpPassword;
 		private String type;
+		private boolean isCompress;
+		private String compressPath;
+		private Connection conn;
 
 		public ScpFile(String filePath, String ip, int port, String scpUser, String scpPassword) {
 			this.filePath = filePath;
@@ -141,6 +152,9 @@ public class OSUtil {
 			this.port = port;
 			this.scpUser = scpUser;
 			this.scpPassword = scpPassword;
+			this.isCompress = false;
+			this.compressPath = null;
+			this.conn = null;
 
 			if (!StringUtils.isBlank(filePath)) {
 				if (StringUtils.isBlank(ip)) {
@@ -148,7 +162,19 @@ public class OSUtil {
 				} else if (StringUtils.isBlank(scpUser) || StringUtils.isBlank(scpPassword) || port <= 0) {
 					this.type = null;
 				} else {
-					this.type = "remote";
+					this.type = null;
+					try {
+						Connection conn = new Connection(ip, port);
+						conn.connect();
+						if (conn.authenticateWithPassword(scpUser, scpPassword)) {
+							this.conn = conn;
+							this.type = "remote";
+						} else {
+							logger.error("Authentication failed");
+						}
+					} catch (IOException e) {
+						logger.error(StringUtil.getExceptionStackTraceMessage(e));
+					}
 				}
 			} else {
 				this.type = null;
@@ -177,9 +203,29 @@ public class OSUtil {
 		public int getPort() {
 			return port;
 		}
+		public String getCompressPath() {
+			return compressPath;
+		}
+		public void setCompressPath(String compressPath) {
+			this.compressPath = compressPath;
+		}
+		public boolean isCompress() {
+			return isCompress;
+		}
+		public void setCompress(boolean compress) {
+			isCompress = compress;
+		}
+		public Connection getConn() {
+			return conn;
+		}
+		public void closeConn() {
+			if (this.conn != null) {
+				this.conn.close();
+			}
+		}
 	}
 
-	public static ShellResult scp(ScpFile srcFile, ScpFile dstFile) {
+	public static ShellResult scp_shell(ScpFile srcFile, ScpFile dstFile) {
 		String DEFAULTCHART = "UTF-8";
 		Runtime runtime = Runtime.getRuntime();
 		ShellResult shellResult = new ShellResult();
@@ -294,35 +340,191 @@ public class OSUtil {
 		return shellResult;
 	}
 
-	public static boolean replaceStringInFile(File file , String match_str, String dst_str) {
+	public static void scp_java(ScpFile srcFile, ScpFile dstFile) throws Exception {
+		if (srcFile.type == null || dstFile.getType() == null) {
+			throw new Exception("Can not discriminate the file Type.");
+        }
+
+        boolean is_src_local = srcFile.getType().equals("local");
+		File src_file = new File(srcFile.getFilePath());
+		boolean src_is_dir;
+		if (is_src_local) {
+			if (!src_file.exists()) {
+				throw new IOException("Can not find the srcFile");
+			}
+			src_is_dir = src_file.isDirectory();
+			if (src_is_dir || srcFile.isCompress()) {
+				String tarGzPath = System.getProperty("java.io.tmpdir") + src_file.getName() + "-" + TimeUtil.getDateNow().getTime() + ".tar.gz";
+				CompressUtil.tarGzCompress(src_file, tarGzPath);
+				srcFile.setCompress(true);
+				srcFile.setCompressPath(tarGzPath);
+			}
+        } else {
+			ShellResult shellResult = execShell(srcFile.getConn(), "ls " + srcFile.getFilePath());
+			if (shellResult.getExist_code() != 0) {
+				throw new IOException("Can not find the srcFile");
+			} else {
+				src_is_dir = !srcFile.getFilePath().equals(shellResult.getStd_out());
+				if (src_is_dir || srcFile.isCompress()) {
+					String tarGzPath = "/tmp/" + src_file.getName() + "-" + TimeUtil.getDateNow().getTime() + ".tar.gz";
+					String cmd = "cd " + src_file.getParentFile()  + " && tar -xzf " + tarGzPath + " " + src_file.getName();
+					ShellResult tmp = execShell(srcFile.getConn(), cmd);
+					if (tmp.getExist_code() != 0) {
+						throw new IOException("SrcFile compress failed.");
+					}
+					srcFile.setCompress(true);
+					srcFile.setCompressPath(tarGzPath);
+				}
+			}
+		}
+
+		boolean is_dst_local = dstFile.getType().equals("local");
+		File dst_file = new File(srcFile.getFilePath());
+		if (is_dst_local) {
+			if (!dst_file.exists()) dst_file.mkdirs();
+			if (dst_file.isFile()) {
+				throw new IOException("The dstFile must be directory.");
+			}
+		} else {
+			ShellResult shellResult = execShell(dstFile.getConn(), "ls " + dstFile.getFilePath());
+			if (shellResult.getExist_code() == 0) {
+				if (dstFile.getFilePath().equals(shellResult.getStd_out())) {
+					throw new IOException("The dstFile must be a directory.");
+				}
+			}
+			else if (shellResult.getExist_code() == 2) {
+				ShellResult tmp = execShell(dstFile.getConn(), "mkdir -p " + dstFile.getFilePath());
+				if (tmp.getExist_code() != 0) {
+					throw new IOException("Can not create dstFile directory.");
+				}
+			} else {
+				throw new IOException("Can not fetch the dstFile status.");
+			}
+		}
+
+		if (is_src_local && is_dst_local) {
+			if(srcFile.isCompress()) {
+				CompressUtil.unTarGz(srcFile.getCompressPath(), dstFile.getFilePath(), true);
+			} else {
+				Files.copy(src_file.toPath(), dst_file.toPath());
+			}
+		} else if (is_src_local && !is_dst_local) {
+			if (srcFile.isCompress()) {
+				File local_tar_file = new File(srcFile.getCompressPath());
+				putFile(new SCPClient(dstFile.getConn()), local_tar_file, "/tmp/");
+				ShellResult shellResult = execShell(dstFile.getConn(), "cd " + dstFile.getFilePath() + " && tar -xzf " + "/tmp/" + local_tar_file.getName());
+				if (shellResult.getExist_code() != 0) {
+					throw new IOException("Can not extract temp file to dstDir.");
+				}
+				ShellResult tmp = execShell(dstFile.getConn(),"rm -fr /tmp/" + local_tar_file.getName());
+				if (tmp.getExist_code() != 0) {
+					logger.error("Clear temp file failed.");
+				}
+				local_tar_file.deleteOnExit();
+			} else {
+				putFile(new SCPClient(dstFile.getConn()), dst_file, dstFile.getFilePath());
+			}
+		} else if (!is_src_local && is_dst_local) {
+			if (srcFile.isCompress()) {
+				String tempFileName = new File(srcFile.getCompressPath()).getName();
+				getFile(new SCPClient(srcFile.getConn()), srcFile.getCompressPath(), System.getProperty("java.io.tmpdir"));
+				CompressUtil.unTarGz(System.getProperty("java.io.tmpdir") + tempFileName, dstFile.getFilePath(), true);
+				ShellResult tmp = execShell(srcFile.getConn(),"rm -fr /tmp/" + tempFileName);
+				if (tmp.getExist_code() != 0) {
+					logger.error("Clear temp file failed.");
+				}
+			} else {
+				getFile(new SCPClient(srcFile.getConn()), srcFile.getFilePath(), dstFile.getFilePath());
+			}
+		} else {
+			if (srcFile.isCompress()) {
+				String tempFileName = new File(srcFile.getCompressPath()).getName();
+				getFile(new SCPClient(srcFile.getConn()), srcFile.getCompressPath(), System.getProperty("java.io.tmpdir"));
+				File tmp_tar_file = new File(System.getProperty("java.io.tmpdir") + tempFileName);
+				putFile(new SCPClient(dstFile.getConn()), tmp_tar_file,"/tmp/");
+				ShellResult shellResult = execShell(dstFile.getConn(), "cd " + dstFile.getFilePath() + " && tar -xzf " + "/tmp/" + tempFileName);
+				if (shellResult.getExist_code() != 0) {
+					throw new IOException("Can not extract temp file to dstDir.");
+				}
+				ShellResult tmp = execShell(srcFile.getConn(),"rm -fr /tmp/" + tempFileName);
+				if (tmp.getExist_code() != 0) {
+					logger.error("Clear temp file failed.");
+				}
+				tmp = execShell(dstFile.getConn(),"rm -fr /tmp/" + tempFileName);
+				if (tmp.getExist_code() != 0) {
+					logger.error("Clear temp file failed.");
+				}
+				tmp_tar_file.deleteOnExit();
+			} else {
+				String tmp_file_name = new File(srcFile.getFilePath()).getName();
+				getFile(new SCPClient(srcFile.getConn()), srcFile.getFilePath(), System.getProperty("java.io.tmpdir"));
+				File tmp_file = new File(System.getProperty("java.io.tmpdir") + tmp_file_name);
+				putFile(new SCPClient(dstFile.getConn()), tmp_file,dstFile.getFilePath());
+				tmp_file.deleteOnExit();
+			}
+		}
+	}
+
+	private static void putFile(SCPClient client, File localFile, String dstDirectory) throws IOException {
+		SCPOutputStream scpOutputStream = client.put(localFile.getName(), localFile.length(), dstDirectory, null);
+		BufferedInputStream bis = new BufferedInputStream(new FileInputStream(localFile));
+		int len;
+		byte[] bytes = new byte[10240];
+		while ((len = bis.read(bytes)) != -1) {
+			scpOutputStream.write(bytes, 0, len);
+		}
+		scpOutputStream.flush();
+		scpOutputStream.close();
+		bis.close();
+	}
+
+	private static void getFile(SCPClient client, String remoteFile, String dstDirectory) throws IOException {
+		String fileName = new File(remoteFile).getName();
+		SCPInputStream scpInputStream = client.get(remoteFile);
+		BufferedOutputStream bos = new BufferedOutputStream(new FileOutputStream(new File(dstDirectory + fileName)));
+		int len;
+		byte[] bytes = new byte[10240];
+		while ((len = scpInputStream.read(bytes)) != -1) {
+			bos.write(bytes, 0, len);
+		}
+		bos.flush();
+		bos.close();
+		scpInputStream.close();
+	}
+
+	public static boolean replaceStringInSmallFile(File file , String match_str, String dst_str) {
+		if (file == null) {
+			logger.error("The param file can not be null.");
+			return false;
+		}
+
+		if (!file.isFile()) {
+			logger.error("The param file can not be a directory.");
+			return false;
+		}
+
 		try {
 			BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(file), "UTF-8"));
 			CharArrayWriter caw = new CharArrayWriter();
 			String line;
 			while((line = br.readLine()) != null){
-				line = line.replaceAll(match_str, dst_str);
 				caw.write(line);
 				caw.append(System.getProperty("line.separator"));
 			}
 			br.close();
 
 			FileWriter fw=new FileWriter(file);
-			caw.writeTo(fw);
+			fw.write(caw.toString().replaceAll(match_str, dst_str));
+			fw.flush();
 			fw.close();
-		} catch (UnsupportedEncodingException e) {
-			e.printStackTrace();
-			return false;
-		} catch (FileNotFoundException e) {
-			e.printStackTrace();
-			return false;
 		} catch (IOException e) {
-			e.printStackTrace();
+			logger.error(StringUtil.getExceptionStackTraceMessage(e));
 			return false;
 		}
 		return true;
 	}
 
 	public static void main(String[] args) {
-		System.out.println(replaceStringInFile(new File("/Users/skyline/Downloads/ierp_dev0724.conf"), "server\\s+web-8080-331101.kcssz.cloud.kingdee.com", "server 127.0.0.1:1024"));
 	}
+
 }

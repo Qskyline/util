@@ -1,20 +1,22 @@
 package com.skyline.util;
 
+import org.apache.commons.lang3.StringUtils;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.io.UnsupportedEncodingException;
 import java.util.Arrays;
-import org.apache.commons.lang3.StringUtils;
 
 public class StringUtil {
 	public static int compareVersion(Object version1, Object version2) {
-		int[] __version1 = null;
-		int[] __version2 = null;	
-		if(version1 instanceof int[] && version2 instanceof int[] && ((int[])version1).length == ((int[])version2).length) {
-			__version1 = (int[])version1;
-			__version2 = (int[])version2;
-		} else if(version1 instanceof String && version2 instanceof String && ((String)version1).length() == ((String)version2).length()) {
-			String[] _version1 = ((String)version1).split("\\.");
-			String[] _version2 = ((String)version2).split("\\.");
-			if(_version1.length != _version2.length) {
+		int[] __version1;
+		int[] __version2;
+		if (version1 instanceof int[] && version2 instanceof int[] && ((int[]) version1).length == ((int[]) version2).length) {
+			__version1 = (int[]) version1;
+			__version2 = (int[]) version2;
+		} else if (version1 instanceof String && version2 instanceof String) {
+			String[] _version1 = ((String) version1).split("\\.");
+			String[] _version2 = ((String) version2).split("\\.");
+			if (_version1.length != _version2.length) {
 				return -2;
 			} else {
 				int length = _version1.length;
@@ -32,22 +34,22 @@ public class StringUtil {
 		} else {
 			return -2;
 		}
-		
-		if(__version1[0] > __version2[0]) return 1;
-		else if(__version1[0] < __version2[0]) return -1;
-		else if(__version1.length == 1) return 0;
+
+		if (__version1[0] > __version2[0]) return 1;
+		else if (__version1[0] < __version2[0]) return -1;
+		else if (__version1.length == 1) return 0;
 		else {
 			int length = __version1.length;
-			int[] p_version1 = new int[length-1];
-			int[] p_version2 = new int[length-1];
+			int[] p_version1 = new int[length - 1];
+			int[] p_version2 = new int[length - 1];
 			for (int i = 1; i < length; i++) {
-				p_version1[i-1] = __version1[i];
-				p_version2[i-1] = __version2[i];
+				p_version1[i - 1] = __version1[i];
+				p_version2[i - 1] = __version2[i];
 			}
 			return compareVersion(p_version1, p_version2);
 		}
 	}
-	
+
 	public static String bytesToString(byte[] bytes, int len) {
 		try {
 			return StringUtils.trimToNull(new String(bytes, 0, len, "UTF-8"));
@@ -56,16 +58,16 @@ public class StringUtil {
 			return null;
 		}
 	}
-	
+
 	public static String bytesToString(byte[] bytes) {
 		return bytesToString(bytes, bytes.length);
 	}
-	
+
 	public static byte[] stringToBytes(String string, int len) {
 		string = StringUtils.trimToNull(string);
 		byte[] result = new byte[len];
-		Arrays.fill(result, (byte)0);
-		if(string == null) return result;
+		Arrays.fill(result, (byte) 0);
+		if (string == null) return result;
 		try {
 			System.arraycopy(string.getBytes("UTF-8"), 0, result, 0, Math.min(string.getBytes("UTF-8").length, len));
 		} catch (UnsupportedEncodingException e) {
@@ -74,7 +76,7 @@ public class StringUtil {
 		}
 		return result;
 	}
-	
+
 	public static byte[] stringToBytes(String string) {
 		try {
 			return stringToBytes(string, string.getBytes("UTF-8").length);
@@ -83,7 +85,29 @@ public class StringUtil {
 			return null;
 		}
 	}
-	
+
+	public static String getExceptionStackTraceMessage(Exception ex) {
+		StringWriter sw = new StringWriter();
+		PrintWriter writer = new PrintWriter(sw);
+		ex.printStackTrace(writer);
+		writer.flush();
+		return sw.toString();
+	}
+
+	public static String trim(String args, char beTrim) {
+		int st = 0;
+		int len = args.length();
+		char[] val = args.toCharArray();
+		char sbeTrim = beTrim;
+		while ((st < len) && (val[st] == sbeTrim)) {
+			st++;
+		}
+		while ((len > st) && (val[len - 1] == sbeTrim)) {
+			len--;
+		}
+		return args.substring(st, len);
+	}
+
 	public static void main(String[] args) {
 	}
 }

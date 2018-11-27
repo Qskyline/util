@@ -87,6 +87,18 @@
 			<artifactId>maven-gpg-plugin</artifactId>
 			<version>1.6</version>
 		</dependency>
+
+		<dependency>
+			<groupId>org.apache.ant</groupId>
+			<artifactId>ant</artifactId>
+			<version>1.9.7</version>
+		</dependency>
+
+		<dependency>
+			<groupId>org.slf4j</groupId>
+			<artifactId>slf4j-nop</artifactId>
+			<version>1.7.24</version>
+		</dependency>
 	</dependencies>
 
 	<profiles>
