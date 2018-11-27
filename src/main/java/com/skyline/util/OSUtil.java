@@ -367,7 +367,7 @@ public class OSUtil {
 				src_is_dir = !srcFile.getFilePath().equals(shellResult.getStd_out());
 				if (src_is_dir || srcFile.isCompress()) {
 					String tarGzPath = "/tmp/" + src_file.getName() + "-" + TimeUtil.getDateNow().getTime() + ".tar.gz";
-					String cmd = "cd " + src_file.getParentFile()  + " && tar -xzf " + tarGzPath + " " + src_file.getName();
+					String cmd = "cd " + src_file.getParentFile()  + " && tar -czf " + tarGzPath + " " + src_file.getName();
 					ShellResult tmp = execShell(srcFile.getConn(), cmd);
 					if (tmp.getExist_code() != 0) {
 						throw new IOException("SrcFile compress failed.");
