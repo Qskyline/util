@@ -479,6 +479,8 @@ public class OSUtil {
 	}
 
 	private static void getFile(SCPClient client, String remoteFile, String dstDirectory) throws IOException {
+        char t = System.getProperty("line.separator").charAt(0);
+        dstDirectory = StringUtil.trim(dstDirectory, t) + t;
 		String fileName = new File(remoteFile).getName();
 		SCPInputStream scpInputStream = client.get(remoteFile);
 		BufferedOutputStream bos = new BufferedOutputStream(new FileOutputStream(new File(dstDirectory + fileName)));
