@@ -422,7 +422,7 @@ public class OSUtil {
 				}
 				local_tar_file.deleteOnExit();
 			} else {
-				putFile(new SCPClient(dstFile.getConn()), dst_file, dstFile.getFilePath());
+				putFile(new SCPClient(dstFile.getConn()), src_file, dstFile.getFilePath());
 			}
 		} else if (!is_src_local && is_dst_local) {
 			if (srcFile.isCompress()) {
