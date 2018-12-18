@@ -117,7 +117,7 @@ public class OSUtil {
 		return shellResult;
 	}
 
-	private static String processStdout(InputStream in, String charset) {
+	public static String processStdout(InputStream in, String charset) {
 		InputStream stdout = new StreamGobbler(in);
 		StringBuffer buffer = new StringBuffer();
 		try {
