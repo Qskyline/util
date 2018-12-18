@@ -3,7 +3,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>com.github.qskyline</groupId>
 	<artifactId>util</artifactId>
-	<version>0.0.14</version>
+	<version>0.0.15</version>
 	<packaging>jar</packaging>
 	<name>util</name>
 	<description>utility tools library</description>
