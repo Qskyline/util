@@ -115,7 +115,7 @@ public class SecurityUtil {
 	public static void main(String[] args) {  
         try {
             String test = "9ba45bfd500642328ec03ad8ef1b6e75";
-            String key = "c46b3d6667322fc092452a94afe4b755";
+            String key = "c46b3d6667322fc092452a94afe4b";
             String tt = desEncrpt(test, key);
             System.out.println("加密前的字符：" + test);
             System.out.println("加密后的字符：" + tt);
