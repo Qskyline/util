@@ -115,6 +115,7 @@ public class StringUtil {
 	}
 
 	public static boolean isIp(String ip) {
+	    if (StringUtils.isEmpty(ip)) return false;
 		String regex = "^[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}$";
 		if (!ip.matches(regex)) return false;
 
