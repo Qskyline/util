@@ -114,6 +114,23 @@ public class StringUtil {
 		return trim(args, beTrim, 2);
 	}
 
+	public static boolean isIp(String ip) {
+		String regex = "^[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}$";
+		if (!ip.matches(regex)) return false;
+
+		String[] data = ip.split("\\.");
+		if(data.length != 4) return false;
+		for (String seg : data) {
+			if (seg.startsWith("0") && seg.length() > 1) return false;
+			int t = Integer.valueOf(seg);
+			if (t < 0 || t > 255) return false;
+		}
+		int first_seg = Integer.valueOf(data[0]);
+
+		if (first_seg == 0 || first_seg == 255) return false;
+		return true;
+	}
+
 	public static void main(String[] args) {
 	}
 }
