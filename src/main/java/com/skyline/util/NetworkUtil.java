@@ -133,7 +133,7 @@ public class NetworkUtil {
 		return result;
 	}
 
-	public String sendGet(String url, Map<String,String> header) throws Exception {
+	public static String sendGet(String url, Map<String,String> header) throws Exception {
 		return sendGet(url, header, DEFAULT_CONNECTION_TIMEOUT, DEFAULT_REQUEST_TIMEOUT, DEFAULT_SOCKET_TIMEOUT);
 	}
 
