@@ -1,65 +1,184 @@
 package com.skyline.util;
 
-import net.sf.json.JSONObject;
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONObject;
 import org.apache.commons.lang.StringUtils;
 import org.apache.http.Header;
 import org.apache.http.HttpEntity;
+import org.apache.http.HttpHeaders;
+import org.apache.http.HttpResponse;
+import org.apache.http.client.HttpClient;
 import org.apache.http.client.config.RequestConfig;
-import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.client.methods.CloseableHttpResponse;
+import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
+import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
-import org.apache.http.message.BasicNameValuePair;
+import org.apache.http.message.BasicHeader;
 import org.apache.http.util.EntityUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import javax.servlet.http.HttpServletResponse;
 import java.io.*;
 import java.net.*;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
+import java.nio.charset.Charset;
+import java.util.*;
 
 public class NetworkUtil {
+	private static Logger logger = LoggerFactory.getLogger(NetworkUtil.class);
+	private static final int DEFAULT_CONNECTION_TIMEOUT = 3000;
+	private static final int DEFAULT_REQUEST_TIMEOUT = 3000;
+	private static final int DEFAULT_SOCKET_TIMEOUT = 5000;
 
-	public static String sendPost(String url, String params) throws IOException {
-		return sendPost(url, params, null);
+	private static List<Header> mergeHeaders(List<Header> headers, List<Header> defaultHeaders) {
+		if (headers == null || headers.size() == 0) {
+			return defaultHeaders == null ? new ArrayList<>() : defaultHeaders;
+		}
+
+		if (defaultHeaders == null || defaultHeaders.size() == 0) {
+			return headers;
+		}
+
+		Map<String, Header> data = new HashMap<>();
+		for (Header header : defaultHeaders) {
+			data.put(header.getName().toLowerCase(), header);
+		}
+		for (Header header : headers) {
+			data.put(header.getName().toLowerCase(), header);
+		}
+
+		List<Header> result = new ArrayList<>();
+		for (String key : data.keySet()) {
+			result.add(data.get(key));
+		}
+
+		return result;
 	}
 
-	public static String sendPost(String url, String params, Header[] headers) throws IOException {
-		String result = null;
-		
-		String[] param = params.split("&");
-		List<BasicNameValuePair> formParams = new ArrayList<BasicNameValuePair>();
-		for (String string : param) {
-			String[] pair = string.split("=");
-			if(pair.length != 2) continue;
-			formParams.add(new BasicNameValuePair(pair[0], pair[1]));
-		}
-		UrlEncodedFormEntity uefEntity = new UrlEncodedFormEntity(formParams, "UTF-8");
-		
+	public static String sendPost(String url) throws IOException {
+		return sendPost(url, null, null, DEFAULT_CONNECTION_TIMEOUT, DEFAULT_REQUEST_TIMEOUT, DEFAULT_SOCKET_TIMEOUT);
+	}
+
+	public static String sendPost(String url, Map<String,String> params) throws IOException {
+		return sendPost(url, params, null, DEFAULT_CONNECTION_TIMEOUT, DEFAULT_REQUEST_TIMEOUT, DEFAULT_SOCKET_TIMEOUT);
+	}
+
+	public static String sendPost(String url, Map<String,String> params, List<Header> headers) throws IOException {
+		return sendPost(url, params, headers, DEFAULT_CONNECTION_TIMEOUT, DEFAULT_REQUEST_TIMEOUT, DEFAULT_SOCKET_TIMEOUT);
+	}
+
+	public static String sendPost(
+			String url,
+			Map<String,String> params,
+			List<Header> headers,
+			int connectionTimeout,
+			int requestTimeout,
+			int socketTimeout
+	) throws IOException {
+		//http conf
 		HttpPost httppost = new HttpPost(url);
 		RequestConfig requestConfig = RequestConfig.custom()
-                .setConnectTimeout(50000).setConnectionRequestTimeout(10000)
-                .setSocketTimeout(50000).build();
+				.setConnectTimeout(connectionTimeout).setConnectionRequestTimeout(requestTimeout)
+				.setSocketTimeout(socketTimeout).build();
 		httppost.setConfig(requestConfig);
-		httppost.setEntity(uefEntity);
-		if (headers != null && headers.length > 0) {
-			httppost.setHeaders(headers);
+
+		// determine headers
+		List<Header> defaultHeaders = new ArrayList<>();
+		defaultHeaders.add(new BasicHeader(HttpHeaders.ACCEPT, "application/json;charset=UTF-8"));
+		defaultHeaders.add(new BasicHeader(HttpHeaders.ACCEPT_ENCODING, "gzip"));
+		defaultHeaders.add(new BasicHeader(HttpHeaders.CONTENT_TYPE, "application/json;charset=UTF-8"));
+		defaultHeaders.add(new BasicHeader(HttpHeaders.CONTENT_ENCODING, "gzip"));
+		headers = mergeHeaders(headers, defaultHeaders);
+		httppost.setHeaders(headers.toArray(new Header[]{}));
+
+		// process params
+		if (params != null && params.size() > 0) {
+			boolean isForm = false;
+			for (Header header : headers) {
+				if (header.getName().equals(HttpHeaders.CONTENT_TYPE)
+						&& StringUtils.isNotEmpty(header.getValue())
+						&& header.getValue().toLowerCase().contains("x-www-form-urlencoded")) {
+					isForm = true;
+					break;
+				}
+			}
+
+			String paramStr;
+			if (isForm) {
+				List<String> tmp = new ArrayList<>();
+				for (String key : params.keySet()) {
+					tmp.add(key + "=" + params.get(key));
+				}
+				paramStr = StringUtils.join(tmp, "&");
+			} else {
+				paramStr = JSON.toJSONString(params);
+			}
+			httppost.setEntity(new StringEntity(paramStr, Charset.forName("UTF-8")));
 		}
 
+		//execute
 		CloseableHttpClient httpClient = HttpClients.createDefault();
-		CloseableHttpResponse response = httpClient.execute(httppost); 
-		
+		CloseableHttpResponse response = httpClient.execute(httppost);
+
+		//process response
         HttpEntity entity = response.getEntity();
-        if (entity != null) {  
-        	result = EntityUtils.toString(entity, "UTF-8");  
+        String result = null;
+        if (entity != null) {
+        	result = EntityUtils.toString(entity, Charset.forName("UTF-8"));
         }
-        
 		if(response != null) response.close();
     	if(httpClient != null) httpClient.close();
     	
 		return result;
+	}
+
+	public String get(String url, Map<String,String> header) throws Exception {
+		return sendGet(url, header, DEFAULT_CONNECTION_TIMEOUT, DEFAULT_REQUEST_TIMEOUT, DEFAULT_SOCKET_TIMEOUT);
+	}
+
+	public static String sendGet(String url, Map<String,String> headers, int connectionTimeout, int requestTimeout, int socketTimeout) throws Exception {
+		BufferedReader in = null;
+		try {
+			List<Header> headers_list = null;
+			if ((headers != null) && (headers.size() != 0)) {
+				headers_list = new ArrayList<>();
+				Iterator<String> iterator = headers.keySet().iterator();
+				while (iterator.hasNext()) {
+					String key = iterator.next();
+					headers_list.add(new BasicHeader(key, headers.get(key)));
+				}
+			}
+			RequestConfig requestConfig = RequestConfig.custom()
+					.setConnectTimeout(connectionTimeout).setConnectionRequestTimeout(requestTimeout)
+					.setSocketTimeout(socketTimeout).build();
+
+			HttpGet request = new HttpGet();
+			request.setURI(new URI(url));
+			if (headers_list != null) request.setHeaders(headers_list.toArray(new Header[] {}));
+			request.setConfig(requestConfig);
+
+			HttpClient client = HttpClients.createDefault();
+			HttpResponse response = client.execute(request);
+
+			in = new BufferedReader(new InputStreamReader(response.getEntity().getContent()));
+			StringBuffer sb = new StringBuffer();
+			String line;
+			String NL = System.getProperty("line.separator");
+			while ((line = in.readLine()) != null) {
+				sb.append(line + NL);
+			}
+			in.close();
+			return sb.toString();
+		} finally {
+			if (in != null) {
+				try {
+					in.close();
+				} catch (Exception e) {
+					logger.error("Http get error", e);
+				}
+			}
+		}
 	}
 	
 	public static int fetchPostRequestStatus(String _url, String params) throws IOException {
@@ -148,7 +267,7 @@ public class NetworkUtil {
 	public static void writeToResponse(HttpServletResponse response, Object responseModel) throws IOException {
 		if (response == null) return;
 		String res = "";
-		if(responseModel != null) res = JSONObject.fromObject(responseModel).toString();		
+		if(responseModel != null) res = JSON.toJSONString(responseModel);
 		PrintWriter writer = response.getWriter();
 		writer.write(res);
 		writer.flush();
